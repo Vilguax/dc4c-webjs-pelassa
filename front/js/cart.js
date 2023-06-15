@@ -14,7 +14,7 @@ if (!cart || !Array.isArray(cart) || cart.length === 0) {
             .then(productDetails => {
                 const productTotal = productDetails.price * product.quantity;
                 total += productTotal;
-                totalQuantity += product.quantity;
+                totalQuantity += parseInt(product.quantity);
 
                 const productElement = document.createElement('article');
                 productElement.classList.add('cart__item');
@@ -48,12 +48,32 @@ if (!cart || !Array.isArray(cart) || cart.length === 0) {
                     localStorage.setItem('cart', JSON.stringify(cart));
                     productElement.remove();
                     total -= productTotal;
-                    totalQuantity -= product.quantity;
+                    totalQuantity -= parseInt(product.quantity);
                     document.getElementById('totalPrice').textContent = total.toFixed(2);
                     document.getElementById('totalQuantity').textContent = totalQuantity;
                 });
+
                 document.getElementById('totalPrice').textContent = total.toFixed(2);
                 document.getElementById('totalQuantity').textContent = totalQuantity;
             });
     }
+}
+
+const orderForm = document.querySelector('.cart__order__form');
+orderForm.addEventListener('submit', handleOrder);
+
+function handleOrder(event) {
+    fetch('http://localhost:3000/api/products/order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
+    })
+        .then(response => response.json())
+        .then(order => {
+            localStorage.removeItem('cart');
+            window.location.href = `confirmation.html?id=${order.orderId}`;
+        })
+        .catch(error => console.error('Erreur :', error));
 }
