@@ -26,7 +26,7 @@ if (!cart || !Array.isArray(cart) || cart.length === 0) {
                     productElement.querySelector('.cart__item__content__description p:last-child').textContent = `${productTotal.toFixed(2)} €`;
                 }
             } catch (error) {
-                console.error('Une erreur s\'est produite lors de la mise à jour des totaux :', error);
+                console.error('Erreur :', error);
             }
         }
 
@@ -39,35 +39,35 @@ if (!cart || !Array.isArray(cart) || cart.length === 0) {
         quantityInput.addEventListener('change', async (event) => {
             const newQuantity = parseInt(event.target.value);
             const productIndex = cart.findIndex(item => item.id === product.id && item.selectedColor === product.selectedColor);
-    
+
             if (productIndex !== -1) {
                 const oldQuantity = parseInt(cart[productIndex].quantity);
                 const quantityDifference = newQuantity - oldQuantity;
-    
+
                 if (quantityDifference !== 0) {
                     cart[productIndex].quantity = newQuantity;
                     localStorage.setItem('cart', JSON.stringify(cart));
-    
+
                     const response = await fetch(`http://localhost:3000/api/products/${product.id}`);
                     const productDetails = await response.json();
-    
+
                     const productTotal = productDetails.price * newQuantity;
                     productElement.querySelector('.cart__item__content__description p:last-child').textContent = `${productTotal.toFixed(2)} €`;
-    
+
                     updateTotal();
                 }
             }
         });
     };
-    
+
     const renderCart = async () => {
         for (let i = 0; i < cart.length; i++) {
             const product = cart[i];
-    
+
             try {
                 const response = await fetch(`http://localhost:3000/api/products/${product.id}`);
                 const productDetails = await response.json();
-    
+
                 const productElement = document.createElement('article');
                 productElement.classList.add('cart__item');
                 productElement.dataset.id = product.id;
@@ -93,25 +93,21 @@ if (!cart || !Array.isArray(cart) || cart.length === 0) {
                         </div>
                     </div>
                 `;
-    
+
                 document.getElementById('cart__items').appendChild(productElement);
                 await updateCartItem(product, productElement);
             } catch (error) {
-                console.error('Une erreur s\'est produite lors de la mise à jour des éléments du panier :', error);
+                console.error('Erreur :', error);
             }
         }
-    
+
         updateTotal();
     };
-    
-    renderCart();
 
+    renderCart();
 }
 
-const orderForm = document.querySelector('.cart__order__form');
-orderForm.addEventListener('submit', handleOrder);
-
-function handleOrder(event) {
+const handleOrder = async (event) => {
     event.preventDefault();
 
     const firstName = document.getElementById('firstName').value;
@@ -121,25 +117,46 @@ function handleOrder(event) {
     const email = document.getElementById('email').value;
 
     const orderData = {
-        firstName,
-        lastName,
-        address,
-        city,
-        email,
-        cart
+        contact: {
+            firstName,
+            lastName,
+            address,
+            city,
+            email
+        },
+        products: cart.map(item => item.id)
     };
 
-    fetch('http://localhost:3000/api/products/order', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(orderData)
-    })
-        .then(response => response.json())
-        .then(order => {
+    try {
+        const response = await fetch('http://localhost:3000/api/products/order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        });
+
+        if (response.ok) {
+            const order = await response.json();
             localStorage.removeItem('cart');
             window.location.href = `confirmation.html?id=${order.orderId}`;
-        })
-        .catch(error => console.error('Erreur :', error));
-}
+        } else {
+            console.error('Une erreur s\'est produite lors du passage de la commande.');
+        }
+    } catch (error) {
+        console.error('Erreur :', error);
+    }
+};
+
+const renderConfirmationPage = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('id');
+    const orderIdElement = document.getElementById('orderId');
+    orderIdElement.textContent = orderId;
+};
+
+renderConfirmationPage();
+
+
+const orderForm = document.querySelector('.cart__order__form');
+orderForm.addEventListener('submit', handleOrder);
